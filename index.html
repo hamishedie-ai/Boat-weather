@@ -6,21 +6,16 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#ffffff">
 <title>Boat Day Weather</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800;900&display=swap">
 <style>
 /* Layout: phone app — sticky header with day tabs, stacked white cards, fixed bottom nav */
 :root{
-  --bg:#f2f3f5; --card:#ffffff; --fg:#16181d; --muted:#6b7079; --line:#e3e5e9;
+  --bg:#f4f4f6; --card:#ffffff; --fg:#16181d; --muted:#6b7079; --line:#e3e5e9;
   --accent:#f0532b; --hi:#d8231b; --lo:#123c8c;
   --good:#12a150; --warn:#f0b400; --bad:#d93025;
   --sea1:#3d9fd6; --sea2:#14699f; --sky1:#c9d3dc; --sky2:#e8edf1;
-  --font:"Mulish",-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
 }
-@media (prefers-color-scheme:dark){:root{
-  --bg:#0f1114; --card:#1a1d22; --fg:#eef0f3; --muted:#9aa0aa; --line:#2b2f36;
-  --accent:#ff6a42; --hi:#ff6b5e; --lo:#7fa7ff;
-  --good:#2ec56f; --warn:#ffc629; --bad:#ff5a4d;
-  --sea1:#2a7fb0; --sea2:#0d4568; --sky1:#3a434c; --sky2:#252b31; color-scheme:dark}}
+:root{color-scheme:light}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0}
@@ -86,12 +81,13 @@ main{display:flex;flex-direction:column;gap:12px;padding-block:12px}
 
 .scene{position:relative;border-radius:12px;overflow:hidden;aspect-ratio:2/1;max-width:100%;background:var(--sky2)}
 .scene canvas{width:100%;height:100%;display:block}
-.maxtag{position:absolute;right:12px;top:22%;background:rgba(20,24,30,.85);color:#fff;border-radius:8px;padding:4px 8px;text-align:center;font-weight:800;font-size:1rem;line-height:1.1}
-.maxtag small{display:block;font-weight:600;font-size:.7rem;opacity:.8}
-.speed{position:absolute;left:12px;bottom:12px;background:#fff;color:#16181d;border-radius:10px;padding:6px 12px;font-weight:800}
+.maxtag{position:absolute;right:3%;background:rgba(22,26,32,.88);color:#fff;border-radius:8px;padding:3px 9px 4px;text-align:center;font-weight:800;font-size:1.05rem;line-height:1.1;transform:translateY(-100%)}
+.maxtag small{display:block;font-weight:600;font-size:.72rem;opacity:.8}
+.ctrls{position:absolute;left:12px;bottom:12px;display:flex;gap:8px}
+.ctrls button{background:#fff;color:#16181d;border-radius:10px;padding:7px 13px;font-weight:800;box-shadow:0 1px 3px rgba(0,0,0,.15);min-width:44px}
+.hourtag{position:absolute;left:12px;top:12px;background:rgba(255,255,255,.9);color:#16181d;border-radius:8px;padding:3px 9px;font-weight:800;font-size:.9rem}
 .verdict{margin:0;font-size:1.6rem;font-weight:900}
 .verdict.g-t{color:var(--good)}.verdict.w-t{color:#c78f00}.verdict.b-t{color:var(--bad)}
-@media (prefers-color-scheme:dark){.verdict.w-t{color:var(--warn)}}
 .desc{margin:0;font-size:1.02rem}
 .desc a{color:var(--accent);font-weight:700;text-decoration:none}
 .warnbox{border-radius:10px;background:var(--bad);color:#fff;padding:10px 12px;font-weight:700}
@@ -175,8 +171,9 @@ nav a.on{color:var(--accent)}
       </label>
       <div id="warn"></div>
       <div class="scene"><canvas id="sea" width="800" height="400" aria-label="Animated sea conditions"></canvas>
-        <div class="maxtag"><small>Max</small><span id="maxWave">–</span></div>
-        <button class="speed" id="speed" aria-label="Animation speed">▸▸ 1x</button>
+        <div class="maxtag" id="maxTag"><small>Max</small><span id="maxWave">–</span></div>
+        <div class="hourtag" id="hourTag">–</div>
+        <div class="ctrls"><button id="play" aria-label="Play through the day">▶</button><button id="speed" aria-label="Playback speed">▸▸ 1x</button></div>
       </div>
       <h2 class="verdict" id="verdict">Loading…</h2>
       <p class="desc" id="vdesc"></p>
@@ -370,7 +367,7 @@ function draw(){
     const code = codes.length ? codes.sort((a,b)=>b-a)[Math.floor(codes.length/3)] : null;
     return `<button class="day" role="tab" aria-selected="${k===dayIdx}" data-k="${k}">${icon(code,1)}<b>${label}</b><span class="bars"><i class="${ra(am)}"></i><i class="${ra(pm)}"></i></span></button>`;
   }).join("");
-  [...$("days").children].forEach(b => b.onclick = () => { dayIdx = +b.dataset.k; hourSel = null; draw(); });
+  [...$("days").children].forEach(b => b.onclick = () => { stop(); dayIdx = +b.dataset.k; hourSel = null; draw(); });
 
   const day = dayList[dayIdx];
   const isToday = dayIdx === 0;
@@ -442,7 +439,7 @@ function paintHour(){
   $("knob").style.left = `calc(6px + (100% - 12px) * ${x})`;
   $("knob").className = "knob " + v;
   const lab = $("tlab"); lab.textContent = hr12(r.h); lab.style.left = `calc(6px + (100% - 12px) * ${x})`;
-  sceneState = { wave: Math.min(2, mx || 0.1), rain: r.rain || 0, wind: r.wind || 0, cloud: r.cloud ?? 50, day: r.day ?? 1, dir: r.dir || 0 };
+  setScene(r);
 }
 function paintLimits(){
   $("limits").textContent = isOpen()
@@ -509,51 +506,94 @@ function renderTide(){
   $("tide").innerHTML = `<div class="tw"><svg viewBox="0 0 ${Wd} ${Hh}" width="100%" style="min-width:520px" role="img" aria-label="Modelled sea level">${ticks}<text x="2" y="${ys(hi)+4}">${hi.toFixed(1)}m</text><text x="2" y="${ys(lo)+4}">${lo.toFixed(1)}m</text><path d="${path}" fill="none" stroke="var(--sea1)" stroke-width="2.5"/>${marks}</svg></div>`;
 }
 
-/* ---------- animated sea ---------- */
-let sceneState = { wave:0.3, rain:0, wind:5, cloud:40, day:1, dir:0 }, speed = 1, tAcc = 0, last = 0;
+/* ---------- animated sea: the boat rides the forecast swell, hour by hour ---------- */
+const target = { swell:0.3, chop:0.15, per:8, max:0.5, rain:0, wind:5, cloud:40, day:1 };
+const cur = { ...target };
+let speed = 1, playing = false, playTimer = null, tAcc = 0, last = 0;
 const cv = $("sea"), cx = cv.getContext("2d");
-const drops = Array.from({length:90}, () => ({x:Math.random(), y:Math.random(), s:0.6+Math.random()*0.8}));
-const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const drops = Array.from({length:120}, () => ({x:Math.random(), y:Math.random(), s:0.7+Math.random()*0.7}));
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function setScene(r){
+  const open = isOpen();
+  target.swell = open ? (r.swell ?? 0) : 0;                       // long, rolling swell (open water only)
+  target.chop  = open ? (r.wwave ?? (r.wave != null ? r.wave*0.6 : chop(r.wind))) : chop(r.wind); // short wind waves
+  target.per   = open && r.sper ? r.sper : 6;
+  target.max   = effMax(r) ?? 0.2;
+  target.rain = r.rain || 0; target.wind = r.wind || 0; target.cloud = r.cloud ?? 50; target.day = r.day ?? 1;
+  $("hourTag").textContent = `${hr12(r.h)} · ${f1(effWave(r))}m`;
+}
 function frame(ts){
-  const dt = Math.min(0.05, (ts - last) / 1000 || 0); last = ts; tAcc += dt * speed;
-  const w = cv.width, h = cv.height, st = sceneState, t = tAcc;
+  const dt = Math.min(0.05, (ts - last) / 1000 || 0); last = ts; tAcc += dt;
+  for (const k of ["swell","chop","per","max","rain","wind","cloud","day"]) cur[k] += (target[k] - cur[k]) * Math.min(1, dt * 2.5);
+  const w = cv.width, h = cv.height, t = tAcc, pxm = h * 0.19;     // pixels per metre of wave height
+  const grey = Math.min(1, cur.cloud/100 * 0.8 + cur.rain/2);
   // sky
-  const g = cx.createLinearGradient(0,0,0,h*0.6);
-  const grey = Math.min(1, st.cloud/100 + st.rain/3);
-  g.addColorStop(0, grey > 0.6 ? css("--sky1") : (st.day ? "#8fc4ea" : "#1c2a44")); g.addColorStop(1, css("--sky2"));
-  cx.fillStyle = g; cx.fillRect(0,0,w,h);
-  // clouds
-  cx.fillStyle = `rgba(255,255,255,${0.25 + grey*0.35})`;
-  for (let k=0;k<4;k++){ const x = ((k*230 + t*8*(1+st.wind/10)) % (w+300)) - 150, y = 40 + (k%2)*40;
-    cx.beginPath(); cx.ellipse(x, y, 110, 34, 0, 0, Math.PI*2); cx.ellipse(x+70, y+10, 80, 28, 0, 0, Math.PI*2); cx.fill(); }
-  // rain
-  if (st.rain > 0.05) { cx.strokeStyle = "rgba(90,100,115,.45)"; cx.lineWidth = 2; const n = Math.min(drops.length, 15 + st.rain*40);
-    for (let k=0;k<n;k++){ const d = drops[k]; const y = ((d.y + t*0.9*d.s) % 1) * h * 0.75, x = ((d.x + t*0.05) % 1) * w;
-      cx.beginPath(); cx.moveTo(x, y); cx.lineTo(x - 4, y + 16); cx.stroke(); } }
-  // sea
-  const amp = 6 + st.wave * 26, base = h * 0.55, kx = 0.018 + st.wave*0.006;
-  const yAt = x => base + Math.sin(x*kx + t*2.2) * amp*0.55 + Math.sin(x*kx*2.3 - t*3.1) * amp*0.25 + Math.sin(x*0.004 + t*0.8) * amp*0.3;
-  const sg = cx.createLinearGradient(0, base - amp, 0, h); sg.addColorStop(0, css("--sea1")); sg.addColorStop(1, css("--sea2"));
-  cx.fillStyle = sg; cx.beginPath(); cx.moveTo(0, h);
-  for (let x=0; x<=w; x+=6) cx.lineTo(x, yAt(x)); cx.lineTo(w, h); cx.closePath(); cx.fill();
-  cx.strokeStyle = "rgba(255,255,255,.75)"; cx.lineWidth = 3; cx.beginPath();
-  for (let x=0; x<=w; x+=6) x ? cx.lineTo(x, yAt(x)) : cx.moveTo(x, yAt(x)); cx.stroke();
-  // whitecaps when windy
-  if (st.wind > 12) { cx.fillStyle = "rgba(255,255,255,.8)"; for (let x=30; x<w; x+=70) { const y = yAt(x); if (Math.sin(x*kx + t*2.2) > 0.75) { cx.beginPath(); cx.arc(x, y-2, 4, 0, Math.PI*2); cx.fill(); } } }
-  // boat (tinny)
-  const bx = w*0.48, by = yAt(bx), ang = Math.atan2(yAt(bx+30) - yAt(bx-30), 60);
-  cx.save(); cx.translate(bx, by - 4); cx.rotate(ang);
-  cx.fillStyle = "#e9eef2"; cx.strokeStyle = "#5d6670"; cx.lineWidth = 2;
-  cx.beginPath(); cx.moveTo(-60,-14); cx.lineTo(62,-14); cx.lineTo(48,6); cx.lineTo(-54,6); cx.closePath(); cx.fill(); cx.stroke();
-  cx.strokeStyle = "#d8231b"; cx.lineWidth = 3; cx.beginPath(); cx.moveTo(-57,-4); cx.lineTo(56,-4); cx.stroke();
-  cx.fillStyle = "#5d6670"; cx.fillRect(-58,-26,8,12); cx.fillRect(-62,-22,4,20); // outboard
-  cx.fillStyle = "#3d9fd6"; cx.beginPath(); cx.moveTo(10,-14); cx.lineTo(18,-26); cx.lineTo(34,-26); cx.lineTo(38,-14); cx.fill();
+  const g = cx.createLinearGradient(0, 0, 0, h*0.62);
+  const top = cur.day < 0.5 ? [40,52,74] : [Math.round(150 + 40*grey), Math.round(195 - 10*grey), Math.round(232 - 30*grey)];
+  g.addColorStop(0, `rgb(${top})`); g.addColorStop(1, cur.day < 0.5 ? "#55657d" : "#e6eaee");
+  cx.fillStyle = g; cx.fillRect(0, 0, w, h);
+  // soft clouds
+  cx.save(); cx.filter = "blur(14px)"; cx.fillStyle = `rgba(255,255,255,${0.35 + grey*0.4})`;
+  for (let k = 0; k < 5; k++) { const x = ((k*210 + t*(6 + cur.wind)) % (w + 400)) - 200, y = 30 + (k % 3) * 35;
+    cx.beginPath(); cx.ellipse(x, y, 140, 46, 0, 0, Math.PI*2); cx.ellipse(x + 90, y + 18, 100, 36, 0, 0, Math.PI*2); cx.fill(); }
   cx.restore();
-  if (!reduce) requestAnimationFrame(frame);
+  // rain streaks, slanted with the wind
+  if (cur.rain > 0.03) { cx.strokeStyle = "rgba(120,130,145,.5)"; cx.lineWidth = 1.6; const n = Math.min(drops.length, 20 + cur.rain*60), slant = 2 + cur.wind*0.3;
+    for (let k = 0; k < n; k++) { const d = drops[k], y = ((d.y + t*0.8*d.s) % 1) * h * 0.8, x = ((d.x + t*0.03) % 1) * w;
+      cx.beginPath(); cx.moveTo(x, y); cx.lineTo(x - slant, y + 18); cx.stroke(); } }
+  // sea surface: swell (long, slow) + chop (short, quick)
+  const base = h * 0.6;
+  const sA = cur.swell/2 * pxm, cA = cur.chop/2 * pxm;
+  const sk = 2*Math.PI / (cur.per * 55), sw = 2*Math.PI / cur.per;   // wavelength grows with period
+  const yAt = x => base + Math.sin(x*sk - t*sw*1.6) * sA
+                        + Math.sin(x*0.045 - t*3.4) * cA*0.6 + Math.sin(x*0.083 + t*2.6) * cA*0.4 + Math.sin(x*0.02 - t*1.3) * cA*0.3;
+  const sg = cx.createLinearGradient(0, base - sA - cA, 0, h); sg.addColorStop(0, "#3c9fd8"); sg.addColorStop(1, "#13649a");
+  cx.fillStyle = sg; cx.beginPath(); cx.moveTo(0, h);
+  for (let x = 0; x <= w; x += 5) cx.lineTo(x, yAt(x)); cx.lineTo(w, h); cx.closePath(); cx.fill();
+  cx.strokeStyle = "rgba(255,255,255,.85)"; cx.lineWidth = 3; cx.beginPath();
+  for (let x = 0; x <= w; x += 5) x ? cx.lineTo(x, yAt(x)) : cx.moveTo(0, yAt(0)); cx.stroke();
+  // foam dots and whitecaps
+  cx.fillStyle = "rgba(255,255,255,.7)";
+  for (let x = 25; x < w; x += 55) { const y = yAt(x); if (cur.wind > 11 && Math.sin(x*0.045 - t*3.4) > 0.7) { cx.beginPath(); cx.arc(x, y + 1, 3.5, 0, Math.PI*2); cx.fill(); }
+    else if ((x/55|0) % 3 === 0) { cx.beginPath(); cx.arc(x, y + 10, 1.8, 0, Math.PI*2); cx.fill(); } }
+  // tinny riding the surface
+  const bx = w*0.47, by = yAt(bx), ang = Math.atan2(yAt(bx+35) - yAt(bx-35), 70) * 0.9;
+  cx.save(); cx.translate(bx, by - 3); cx.rotate(ang); cx.scale(1.35, 1.35);
+  cx.fillStyle = "rgba(0,0,0,.12)"; cx.beginPath(); cx.ellipse(0, 6, 62, 5, 0, 0, Math.PI*2); cx.fill();
+  cx.fillStyle = "#f3f5f7"; cx.strokeStyle = "#69727c"; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(-58,-15); cx.lineTo(66,-17); cx.quadraticCurveTo(60,-2,46,5); cx.lineTo(-52,5); cx.closePath(); cx.fill(); cx.stroke();
+  cx.strokeStyle = "#d8231b"; cx.lineWidth = 3; cx.beginPath(); cx.moveTo(-55,-6); cx.lineTo(58,-8); cx.stroke();
+  cx.fillStyle = "#59616b"; cx.fillRect(-66,-32,12,16); cx.fillRect(-63,-18,5,24);       // outboard
+  cx.fillStyle = "#cfd6dc"; cx.fillRect(-20,-24,6,9); cx.fillRect(16,-23,6,8);            // seats
+  cx.fillStyle = "#3c4650"; cx.beginPath(); cx.arc(-17,-31,6,0,Math.PI*2); cx.fill(); cx.fillRect(-21,-26,8,11); // skipper
+  cx.restore();
+  // I-beam showing the maximum wave height
+  const mPx = Math.max(10, cur.max * pxm), ix = w*0.9, yb = base + mPx/2, yt = base - mPx/2;
+  cx.strokeStyle = "#fff"; cx.lineWidth = 5; cx.lineCap = "round";
+  cx.beginPath(); cx.moveTo(ix, yt); cx.lineTo(ix, yb); cx.moveTo(ix-12, yt); cx.lineTo(ix+12, yt); cx.moveTo(ix-12, yb); cx.lineTo(ix+12, yb); cx.stroke();
+  cx.strokeStyle = "#20262d"; cx.lineWidth = 1.5;
+  cx.beginPath(); cx.moveTo(ix, yt); cx.lineTo(ix, yb); cx.moveTo(ix-12, yt); cx.lineTo(ix+12, yt); cx.moveTo(ix-12, yb); cx.lineTo(ix+12, yb); cx.stroke();
+  $("maxTag").style.top = `${(yt - 10) / h * 100}%`;
+  if (!reduce || playing) requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-$("speed").onclick = () => { speed = speed === 1 ? 2 : speed === 2 ? 0.5 : 1; $("speed").textContent = `▸▸ ${speed}x`; };
+
+function step(){
+  const day = dayList[dayIdx]; if (!day) return stop();
+  const k = day.findIndex(r => r.i === hourSel);
+  if (k < 0 || k >= day.length - 1) return stop();
+  hourSel = day[k+1].i; paintHour();
+}
+function play(){
+  const day = dayList[dayIdx]; if (!day) return;
+  if (day[day.length-1].i === hourSel) hourSel = day[0].i;          // restart from midnight at the end
+  playing = true; $("play").textContent = "❚❚"; $("play").setAttribute("aria-label","Pause");
+  clearInterval(playTimer); playTimer = setInterval(step, 700 / speed);
+  if (reduce) requestAnimationFrame(frame);
+}
+function stop(){ playing = false; clearInterval(playTimer); $("play").textContent = "▶"; $("play").setAttribute("aria-label","Play through the day"); }
+$("play").onclick = () => playing ? stop() : play();
+$("speed").onclick = () => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; $("speed").textContent = `▸▸ ${speed}x`; if (playing) play(); };
 
 /* ---------- timeline scrubbing ---------- */
 function scrub(e){
@@ -561,7 +601,7 @@ function scrub(e){
   const h = Math.max(0, Math.min(23, Math.floor((e.clientX - rect.left) / rect.width * 24)));
   const r = dayList[dayIdx].find(x=>x.h===h); if (r && r.i !== hourSel) { hourSel = r.i; paintHour(); }
 }
-$("tl").addEventListener("pointerdown", e => { $("tl").setPointerCapture(e.pointerId); scrub(e); });
+$("tl").addEventListener("pointerdown", e => { stop(); $("tl").setPointerCapture(e.pointerId); scrub(e); });
 $("tl").addEventListener("pointermove", e => { if (e.buttons) scrub(e); });
 
 /* ---------- area, search, favourites ---------- */
