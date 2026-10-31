@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Boat Day Weather</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one narrow chart-table column — verdict, conditions, model agreement, hourly sheet, tide, official links */
+:root{
+  --bg:#f3f6f7; --surface:#ffffff; --fg:#10232b; --muted:#5a6d74; --line:#d5dfe2;
+  --accent:#0b6e8a; --good:#1f8a4c; --warn:#c07a0a; --bad:#c0392b;
+  --good-bg:#e3f3e9; --warn-bg:#fbf0dc; --bad-bg:#f8e2df;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:"Source Sans 3",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0c171c; --surface:#13232a; --fg:#e4eef1; --muted:#8fa5ac; --line:#24393f;
+  --accent:#4fb6d3; --good:#4cc47e; --warn:#e8a83a; --bad:#ef6b5c;
+  --good-bg:#15301f; --warn-bg:#33270f; --bad-bg:#3a1915; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 var(--body);
+  padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 32px max(16px,env(safe-area-inset-left))}
+main{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1{font:700 1.9rem/1 var(--display);letter-spacing:.02em;margin:0;text-transform:uppercase}
+h2{font:700 1.15rem/1.1 var(--display);letter-spacing:.06em;text-transform:uppercase;margin:0 0 10px;color:var(--muted)}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.place{color:var(--muted);font-size:.95rem}
+.bar{display:flex;gap:8px;flex-wrap:wrap}
+.bar input{flex:1 1 160px;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);font:inherit}
+button{padding:10px 14px;border:1px solid var(--accent);background:var(--accent);color:var(--bg);border-radius:8px;font:600 .95rem var(--body);cursor:pointer}
+button.ghost{background:transparent;color:var(--accent)}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.results{display:flex;flex-direction:column;gap:4px}
+.results button{text-align:left;background:var(--surface);color:var(--fg);border-color:var(--line)}
+section{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.verdict{border-width:2px}
+.verdict.good{border-color:var(--good);background:var(--good-bg)}
+.verdict.warn{border-color:var(--warn);background:var(--warn-bg)}
+.verdict.bad{border-color:var(--bad);background:var(--bad-bg)}
+.verdict .big{font:700 2.2rem/1 var(--display);text-transform:uppercase;letter-spacing:.02em}
+.verdict p{margin:6px 0 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px}
+.stat .k{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font:600 1.5rem/1.2 var(--mono);font-variant-numeric:tabular-nums}
+.stat .s{font-size:.85rem;color:var(--muted)}
+.tw{overflow-x:auto;margin:0 -4px}
+table{border-collapse:collapse;font:13px/1.3 var(--mono);font-variant-numeric:tabular-nums;width:100%}
+th,td{padding:6px 7px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{font:600 .7rem var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td:first-child,th:first-child{text-align:left}
+tr.day td{font:700 .85rem var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:transparent;padding-top:12px}
+tr.night td{color:var(--muted)}
+.c-good{background:var(--good-bg);color:var(--good)} .c-warn{background:var(--warn-bg);color:var(--warn)} .c-bad{background:var(--bad-bg);color:var(--bad)}
+.arrow{display:inline-block}
+.models td:first-child{font-family:var(--body)}
+.note{font-size:.85rem;color:var(--muted);margin:10px 0 0}
+svg text{fill:var(--muted);font:11px var(--mono)}
+.links{display:flex;flex-direction:column;gap:8px}
+.links a{color:var(--accent);font-weight:600}
+.err{color:var(--bad)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:8px}
+.legend span{padding:2px 8px;border-radius:4px}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1>Boat Day Weather</h1>
+    <div class="place" id="place">Hobart, TAS</div>
+  </div>
+
+  <div class="bar">
+    <input id="q" type="search" placeholder="Search a town, bay or boat ramp" aria-label="Search location">
+    <button id="go">Search</button>
+    <button id="loc" class="ghost">My location</button>
+  </div>
+  <div class="results" id="results"></div>
+
+  <section class="verdict" id="verdict"><div class="big">Loading…</div><p>Fetching forecasts from four weather models and the marine model.</p></section>
+
+  <section>
+    <h2>Right now / next hour</h2>
+    <div class="grid" id="now"></div>
+  </section>
+
+  <section>
+    <h2>Do the models agree?</h2>
+    <div class="tw"><table class="models" id="models"></table></div>
+    <p class="note" id="agree"></p>
+  </section>
+
+  <section>
+    <h2>Hour by hour</h2>
+    <div class="tw"><table id="hourly"></table></div>
+    <div class="legend"><span class="c-good">Comfortable</span><span class="c-warn">Take care</span><span class="c-bad">Stay in</span></div>
+    <p class="note">Wind is the average of all four models, in knots. Gust is the highest any model predicts. Limits are set for a 4.1 m tinny: wind under 8 kn and waves under 0.4 m is comfortable, over 13 kn or 0.8 m means stay in. Wind against tide chops things up more than the numbers show.</p>
+  </section>
+
+  <section>
+    <h2>Sea level (tide guide)</h2>
+    <div id="tide"></div>
+    <p class="note">Modelled sea level, metres above mean sea level. This is a rough guide only and can be off in bays and estuaries. Use the official BOM tide times for your port before launching.</p>
+  </section>
+
+  <section>
+    <h2>Official checks before you go</h2>
+    <div class="links">
+      <a href="https://www.bom.gov.au/tas/forecasts/marine.shtml" target="_blank" rel="noopener">BOM Tasmanian coastal waters forecast</a>
+      <a href="https://www.bom.gov.au/tas/warnings/" target="_blank" rel="noopener">BOM Tasmanian warnings (incl. strong wind and gale)</a>
+      <a href="https://www.bom.gov.au/australia/tides/" target="_blank" rel="noopener">BOM tide predictions</a>
+      <a href="https://www.bom.gov.au/products/IDR763.loop.shtml" target="_blank" rel="noopener">Hobart rain radar</a>
+      <a href="https://mast.tas.gov.au/" target="_blank" rel="noopener">MAST (Marine and Safety Tasmania)</a>
+    </div>
+    <p class="note">Forecast data: Open-Meteo (BOM ACCESS-G, ECMWF, US GFS, German ICON, and the marine wave model).</p>
+  </section>
+</main>
+
+<script>
+const MODELS = [
+  ["bom_access_global","BOM ACCESS-G"],
+  ["ecmwf_ifs025","ECMWF (Europe)"],
+  ["gfs_seamless","GFS (USA)"],
+  ["icon_seamless","ICON (Germany)"]
+];
+// Tuned for a 4.1 m tinny
+const LIM = { wind:[8,13], gust:[12,18], wave:[0.4,0.8], rain:[0.5,2] };
+const $ = id => document.getElementById(id);
+let loc = { lat:-42.88, lon:147.33, name:"Hobart, TAS" };
+try { const s = JSON.parse(localStorage.getItem("bdw-loc")); if (s && s.lat) loc = s; } catch(e){}
+
+const lvl = (v, [a,b]) => v == null || isNaN(v) ? "" : v < a ? "good" : v < b ? "warn" : "bad";
+const worst = arr => arr.includes("bad") ? "bad" : arr.includes("warn") ? "warn" : "good";
+const dirName = d => d == null ? "–" : ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(d/22.5)%16];
+const arrow = d => d == null ? "" : `<span class="arrow" style="transform:rotate(${d+180}deg)">↑</span>`;
+const f1 = v => v == null || isNaN(v) ? "–" : v.toFixed(1);
+const f0 = v => v == null || isNaN(v) ? "–" : Math.round(v);
+const mean = a => { const b = a.filter(x => x != null && !isNaN(x)); return b.length ? b.reduce((s,x)=>s+x,0)/b.length : null; };
+const max = a => { const b = a.filter(x => x != null && !isNaN(x)); return b.length ? Math.max(...b) : null; };
+const circMean = a => { const b = a.filter(x => x != null); if (!b.length) return null;
+  const s = b.reduce((t,d)=>t+Math.sin(d*Math.PI/180),0), c = b.reduce((t,d)=>t+Math.cos(d*Math.PI/180),0);
+  return (Math.atan2(s,c)*180/Math.PI+360)%360; };
+
+async function load(){
+  $("place").textContent = loc.name;
+  $("verdict").className = "verdict";
+  $("verdict").innerHTML = '<div class="big">Loading…</div><p>Fetching forecasts.</p>';
+  const vars = "wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,temperature_2m,is_day";
+  const wx = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&hourly=${vars}&models=${MODELS.map(m=>m[0]).join(",")}&wind_speed_unit=kn&timezone=auto&forecast_days=3`;
+  const mar = `https://marine-api.open-meteo.com/v1/marine?latitude=${loc.lat}&longitude=${loc.lon}&hourly=wave_height,swell_wave_height,swell_wave_period,swell_wave_direction,wind_wave_height,sea_surface_temperature,sea_level_height_msl&timezone=auto&forecast_days=3`;
+  try {
+    const [w, m] = await Promise.all([fetch(wx).then(r=>r.json()), fetch(mar).then(r=>r.json()).catch(()=>null)]);
+    if (w.error) throw new Error(w.reason);
+    render(w, m && !m.error ? m : null);
+  } catch(e) {
+    $("verdict").className = "verdict bad";
+    $("verdict").innerHTML = `<div class="big">No data</div><p class="err">Couldn't load the forecast (${e.message}). Check your internet connection, then reload.</p>`;
+  }
+}
+
+function render(w, m){
+  const H = w.hourly, T = H.time;
+  const per = k => MODELS.map(([id]) => H[`${k}_${id}`] || []);
+  const ws = per("wind_speed_10m"), wg = per("wind_gusts_10m"), wd = per("wind_direction_10m"), pr = per("precipitation"), tp = per("temperature_2m");
+  const day = H["is_day_"+MODELS[0][0]] || H["is_day_ecmwf_ifs025"] || [];
+  const mt = m ? m.hourly : null;
+  const mIdx = t => mt ? mt.time.indexOf(t) : -1;
+  const nowStr = new Date().toLocaleString("sv-SE",{timeZone:w.timezone}).slice(0,13).replace(" ","T");
+  let start = T.findIndex(t => t.slice(0,13) >= nowStr); if (start < 0) start = 0;
+
+  const row = i => {
+    const mi = mIdx(T[i]);
+    return {
+      t:T[i], wind:mean(ws.map(a=>a[i])), gust:max(wg.map(a=>a[i])), dir:circMean(wd.map(a=>a[i])),
+      rain:mean(pr.map(a=>a[i])), temp:mean(tp.map(a=>a[i])), day:day[i],
+      spread: (()=>{const v=ws.map(a=>a[i]).filter(x=>x!=null);return v.length>1?Math.max(...v)-Math.min(...v):null})(),
+      wave: mi>=0 ? mt.wave_height[mi] : null, swell: mi>=0 ? mt.swell_wave_height[mi] : null,
+      per: mi>=0 ? mt.swell_wave_period[mi] : null, sdir: mi>=0 ? mt.swell_wave_direction[mi] : null,
+      sst: mi>=0 ? mt.sea_surface_temperature[mi] : null, sea: mi>=0 && mt.sea_level_height_msl ? mt.sea_level_height_msl[mi] : null
+    };
+  };
+
+  // Verdict: daylight hours over the next 12 h
+  const next = []; for (let i=start;i<Math.min(T.length,start+12);i++) next.push(row(i));
+  const lit = next.filter(r=>r.day) .length ? next.filter(r=>r.day) : next;
+  const lv = lit.map(r => worst([lvl(r.wind,LIM.wind),lvl(r.gust,LIM.gust),lvl(r.wave,LIM.wave),lvl(r.rain,LIM.rain)].filter(Boolean)));
+  const v = worst(lv);
+  const mw = max(lit.map(r=>r.wind)), mg = max(lit.map(r=>r.gust)), mwv = max(lit.map(r=>r.wave));
+  const goodHrs = lit.filter((r,k)=>lv[k]==="good").map(r=>r.t.slice(11,16));
+  const words = {good:"Looks good", warn:"Take care", bad:"Stay in"};
+  const why = `Next 12 hours of daylight: wind up to ${f0(mw)} kn, gusts to ${f0(mg)} kn${mwv!=null?`, waves up to ${f1(mwv)} m`:""}.`;
+  const win = v!=="good" && goodHrs.length ? ` Calmer window around ${goodHrs[0]}–${goodHrs[goodHrs.length-1]}.` : "";
+  $("verdict").className = "verdict " + v;
+  $("verdict").innerHTML = `<div class="big">${words[v]}</div><p>${why}${win}</p>`;
+
+  const n = row(start);
+  const stat = (k,val,s,c) => `<div class="stat"><div class="k">${k}</div><div class="v ${c?"":""}">${val}</div><div class="s">${s}</div></div>`;
+  $("now").innerHTML =
+    stat("Wind", `${f0(n.wind)} kn`, `${dirName(n.dir)} ${arrow(n.dir)} · gusts ${f0(n.gust)}`) +
+    stat("Waves", n.wave!=null?`${f1(n.wave)} m`:"–", n.wave!=null?"combined sea + swell":"no marine data here") +
+    stat("Swell", n.swell!=null?`${f1(n.swell)} m`:"–", n.per!=null?`${f0(n.per)} s from ${dirName(n.sdir)}`:"") +
+    stat("Air", `${f0(n.temp)}°C`, `rain ${f1(n.rain)} mm/h`) +
+    stat("Water", n.sst!=null?`${f0(n.sst)}°C`:"–", "sea surface");
+
+  // Model agreement table: max wind & gust over next 12 h per model
+  let mt12 = "<tr><th>Model</th><th>Max wind</th><th>Max gust</th><th>Rain total</th></tr>";
+  MODELS.forEach(([id,name],k)=>{
+    const sl = a => a.slice(start,start+12);
+    const w1 = max(sl(ws[k])), g1 = max(sl(wg[k])), r1 = sl(pr[k]).reduce((s,x)=>s+(x||0),0);
+    if (w1==null) { mt12 += `<tr><td>${name}</td><td colspan="3">not available here</td></tr>`; return; }
+    mt12 += `<tr><td>${name}</td><td class="c-${lvl(w1,LIM.wind)}">${f0(w1)} kn</td><td class="c-${lvl(g1,LIM.gust)}">${f0(g1)} kn</td><td>${f1(r1)} mm</td></tr>`;
+  });
+  $("models").innerHTML = mt12;
+  const sp = max(next.map(r=>r.spread));
+  $("agree").textContent = sp==null ? "" : sp < 5 ? `Models agree closely (wind within ${f0(sp)} kn of each other). Higher confidence.`
+    : sp < 10 ? `Some disagreement (up to ${f0(sp)} kn apart). Plan for the windier forecast.`
+    : `Models disagree a lot (up to ${f0(sp)} kn apart). Low confidence; check BOM's official forecast.`;
+
+  // Hourly sheet
+  let h = "<tr><th>Time</th><th>Wind</th><th>Gust</th><th>Dir</th><th>Waves</th><th>Swell</th><th>Rain</th><th>°C</th></tr>";
+  let lastDay = "";
+  for (let i=start;i<T.length;i++){
+    const r = row(i), d = new Date(r.t).toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"short"});
+    if (d!==lastDay){ h += `<tr class="day"><td colspan="8">${d}</td></tr>`; lastDay = d; }
+    h += `<tr class="${r.day?"":"night"}"><td>${r.t.slice(11,16)}</td>
+      <td class="c-${lvl(r.wind,LIM.wind)}">${f0(r.wind)}</td><td class="c-${lvl(r.gust,LIM.gust)}">${f0(r.gust)}</td>
+      <td>${dirName(r.dir)} ${arrow(r.dir)}</td><td class="c-${lvl(r.wave,LIM.wave)}">${f1(r.wave)}</td>
+      <td>${r.swell!=null?`${f1(r.swell)}/${f0(r.per)}s`:"–"}</td><td>${f1(r.rain)}</td><td>${f0(r.temp)}</td></tr>`;
+  }
+  $("hourly").innerHTML = h;
+
+  // Tide/sea-level chart
+  const pts = []; for (let i=start;i<T.length;i++){ const r=row(i); if (r.sea!=null) pts.push([i-start,r.sea,r.t]); }
+  if (pts.length < 6) { $("tide").innerHTML = '<p class="note">No sea-level data for this spot. Pick a point closer to open water, or use BOM tide times.</p>'; return; }
+  const W=680,Hh=170,pl=36,pb=24,pt=10, xs=x=>pl+x/(pts[pts.length-1][0])*(W-pl-8);
+  const lo=Math.min(...pts.map(p=>p[1])), hi=Math.max(...pts.map(p=>p[1])), ys=y=>pt+(hi-y)/((hi-lo)||1)*(Hh-pt-pb);
+  const path = pts.map((p,k)=>`${k?"L":"M"}${xs(p[0]).toFixed(1)},${ys(p[1]).toFixed(1)}`).join("");
+  let ticks="", marks="";
+  pts.forEach(p=>{ if (p[2].endsWith("00:00")) ticks += `<line x1="${xs(p[0])}" x2="${xs(p[0])}" y1="${pt}" y2="${Hh-pb}" stroke="var(--line)"/><text x="${xs(p[0])+3}" y="${Hh-6}">${new Date(p[2]).toLocaleDateString("en-AU",{weekday:"short"})}</text>`; });
+  for (let k=1;k<pts.length-1;k++){ const [a,b,c]=[pts[k-1][1],pts[k][1],pts[k+1][1]];
+    if ((b>a&&b>=c)||(b<a&&b<=c)) { const hiT=b>a; marks += `<circle cx="${xs(pts[k][0])}" cy="${ys(b)}" r="3" fill="var(--accent)"/><text x="${xs(pts[k][0])}" y="${ys(b)+(hiT?-6:14)}" text-anchor="middle">${hiT?"H":"L"} ${pts[k][2].slice(11,16)}</text>`; } }
+  $("tide").innerHTML = `<div class="tw"><svg viewBox="0 0 ${W} ${Hh}" width="100%" style="min-width:520px" role="img" aria-label="Sea level over the next days">
+    ${ticks}<text x="2" y="${ys(hi)+4}">${hi.toFixed(1)}m</text><text x="2" y="${ys(lo)+4}">${lo.toFixed(1)}m</text>
+    <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2"/>${marks}</svg></div>`;
+}
+
+async function search(){
+  const q = $("q").value.trim(); if (!q) return;
+  $("results").innerHTML = '<p class="note">Searching…</p>';
+  try {
+    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=en&countryCode=AU`).then(r=>r.json());
+    const list = r.results || [];
+    $("results").innerHTML = list.length ? "" : '<p class="note">No places found. Try a nearby town name.</p>';
+    list.forEach(p => { const b = document.createElement("button");
+      b.textContent = `${p.name}${p.admin1?", "+p.admin1:""}`;
+      b.onclick = () => setLoc(p.latitude, p.longitude, b.textContent); $("results").appendChild(b); });
+  } catch(e){ $("results").innerHTML = '<p class="note err">Search failed. Check your connection.</p>'; }
+}
+function setLoc(lat, lon, name){
+  loc = {lat, lon, name}; $("results").innerHTML = ""; $("q").value = "";
+  try { localStorage.setItem("bdw-loc", JSON.stringify(loc)); } catch(e){}
+  load();
+}
+$("go").onclick = search;
+$("q").addEventListener("keydown", e => { if (e.key==="Enter") search(); });
+$("loc").onclick = () => {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(p => setLoc(+p.coords.latitude.toFixed(3), +p.coords.longitude.toFixed(3), "My location"),
+    () => { $("results").innerHTML = '<p class="note err">Location access was refused. Search for a place instead.</p>'; });
+};
+load();
+</script>
+</body>
+</html>
