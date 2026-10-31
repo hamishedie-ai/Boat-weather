@@ -1,0 +1,50 @@
+name: Update BOM forecasts
+
+on:
+  schedule:
+    - cron: "23 * * * *"   # every hour
+  workflow_dispatch:        # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download BOM marine forecasts
+        run: |
+          python3 - <<'EOF'
+          import json, os, urllib.request, datetime
+          PRODUCTS = {
+              "IDT12420": "Derwent Estuary",
+              "IDT12430": "D'Entrecasteaux Channel",
+              "IDT12450": "Frederick Henry & Norfolk Bays",
+              "IDT12326": "South East Coast",
+          }
+          out = {"updated": datetime.datetime.now(datetime.timezone.utc).isoformat(), "products": {}}
+          for pid, name in PRODUCTS.items():
+              entry = {"name": name, "text": None, "error": None}
+              try:
+                  url = f"ftp://ftp.bom.gov.au/anon/gen/fwo/{pid}.txt"
+                  with urllib.request.urlopen(url, timeout=60) as r:
+                      entry["text"] = r.read().decode("utf-8", "replace").replace("\r\n", "\n")
+              except Exception as e:
+                  entry["error"] = str(e)
+                  print(f"{pid}: {e}")
+              out["products"][pid] = entry
+          os.makedirs("data", exist_ok=True)
+          with open("data/bom.json", "w") as f:
+              json.dump(out, f, indent=1)
+          ok = sum(1 for p in out["products"].values() if p["text"])
+          print(f"Got {ok} of {len(PRODUCTS)} BOM products")
+          EOF
+
+      - name: Save if changed
+        run: |
+          git config user.name "bom-updater"
+          git config user.email "bom-updater@users.noreply.github.com"
+          git add data/bom.json
+          git diff --cached --quiet || (git commit -m "Update BOM forecasts" && git push)

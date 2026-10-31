@@ -60,6 +60,11 @@ svg text{fill:var(--muted);font:11px var(--mono)}
 .links{display:flex;flex-direction:column;gap:8px}
 .links a{color:var(--accent);font-weight:600}
 .err{color:var(--bad)}
+.water{display:flex;flex-direction:column;gap:6px}
+.water label{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.water select{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);font:inherit}
+.warnbox{border:2px solid var(--bad);background:var(--bad-bg);color:var(--bad);border-radius:8px;padding:10px 12px;font-weight:600;margin-bottom:10px}
+.bomtext{white-space:pre-wrap;font-size:.95rem;margin:0;overflow-wrap:anywhere}
 .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:8px}
 .legend span{padding:2px 8px;border-radius:4px}
 </style>
@@ -78,7 +83,22 @@ svg text{fill:var(--muted);font:11px var(--mono)}
   </div>
   <div class="results" id="results"></div>
 
+  <div class="water">
+    <label for="area">Where are you boating?</label>
+    <select id="area">
+      <option value="IDT12420">Derwent Estuary (sheltered)</option>
+      <option value="IDT12430">D'Entrecasteaux Channel (sheltered)</option>
+      <option value="IDT12450">Frederick Henry &amp; Norfolk Bays (sheltered)</option>
+      <option value="open">Open water: Storm Bay &amp; south-east coast</option>
+    </select>
+  </div>
+
   <section class="verdict" id="verdict"><div class="big">Loading…</div><p>Fetching forecasts from four weather models and the marine model.</p></section>
+
+  <section id="bom">
+    <h2>BOM official forecast</h2>
+    <div id="bomBody"><p class="note">Loading BOM forecast…</p></div>
+  </section>
 
   <section>
     <h2>Right now / next hour</h2>
@@ -95,7 +115,7 @@ svg text{fill:var(--muted);font:11px var(--mono)}
     <h2>Hour by hour</h2>
     <div class="tw"><table id="hourly"></table></div>
     <div class="legend"><span class="c-good">Comfortable</span><span class="c-warn">Take care</span><span class="c-bad">Stay in</span></div>
-    <p class="note">Wind is the average of all four models, in knots. Gust is the highest any model predicts. Limits are set for a 4.1 m tinny: wind under 8 kn and waves under 0.4 m is comfortable, over 13 kn or 0.8 m means stay in. Wind against tide chops things up more than the numbers show.</p>
+    <p class="note" id="limitsNote"></p>
   </section>
 
   <section>
@@ -113,7 +133,7 @@ svg text{fill:var(--muted);font:11px var(--mono)}
       <a href="https://www.bom.gov.au/products/IDR763.loop.shtml" target="_blank" rel="noopener">Hobart rain radar</a>
       <a href="https://mast.tas.gov.au/" target="_blank" rel="noopener">MAST (Marine and Safety Tasmania)</a>
     </div>
-    <p class="note">Forecast data: Open-Meteo (BOM ACCESS-G, ECMWF, US GFS, German ICON, and the marine wave model).</p>
+    <p class="note">Forecast data: Open-Meteo (BOM ACCESS-G, ECMWF, US GFS, German ICON, and the marine wave model). Official forecasts and warnings: Bureau of Meteorology, collected hourly.</p>
   </section>
 </main>
 
@@ -124,13 +144,21 @@ const MODELS = [
   ["gfs_seamless","GFS (USA)"],
   ["icon_seamless","ICON (Germany)"]
 ];
-// Tuned for a 4.1 m tinny
-const LIM = { wind:[8,13], gust:[12,18], wave:[0.4,0.8], rain:[0.5,2] };
+// Limits tuned for a 4.1 m tinny. Sheltered water tolerates more wind; the coarse wave model is ignored there.
+const LIMITS = {
+  open:      { wind:[8,13],  gust:[12,18], wave:[0.4,0.8], rain:[0.5,2] },
+  sheltered: { wind:[10,15], gust:[15,22], wave:null,      rain:[0.5,2] }
+};
+const AREA_NAMES = { IDT12420:"Derwent Estuary", IDT12430:"D'Entrecasteaux Channel", IDT12450:"Frederick Henry & Norfolk Bays", IDT12326:"South East Coast (Tasman Island to South East Cape, incl. Storm Bay)" };
+let area = "IDT12420";
+try { area = localStorage.getItem("bdw-area") || area; } catch(e){}
+let LIM = LIMITS.sheltered;
+let bom = null, bomLoaded = false, lastWx = null, lastMar = null;
 const $ = id => document.getElementById(id);
 let loc = { lat:-42.88, lon:147.33, name:"Hobart, TAS" };
 try { const s = JSON.parse(localStorage.getItem("bdw-loc")); if (s && s.lat) loc = s; } catch(e){}
 
-const lvl = (v, [a,b]) => v == null || isNaN(v) ? "" : v < a ? "good" : v < b ? "warn" : "bad";
+const lvl = (v, lim) => { if (!lim) return ""; const [a,b] = lim; return v == null || isNaN(v) ? "" : v < a ? "good" : v < b ? "warn" : "bad"; };
 const worst = arr => arr.includes("bad") ? "bad" : arr.includes("warn") ? "warn" : "good";
 const dirName = d => d == null ? "–" : ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(d/22.5)%16];
 const arrow = d => d == null ? "" : `<span class="arrow" style="transform:rotate(${d+180}deg)">↑</span>`;
@@ -149,16 +177,55 @@ async function load(){
   const vars = "wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,temperature_2m,is_day";
   const wx = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&hourly=${vars}&models=${MODELS.map(m=>m[0]).join(",")}&wind_speed_unit=kn&timezone=auto&forecast_days=3`;
   const mar = `https://marine-api.open-meteo.com/v1/marine?latitude=${loc.lat}&longitude=${loc.lon}&hourly=wave_height,swell_wave_height,swell_wave_period,swell_wave_direction,wind_wave_height,sea_surface_temperature,sea_level_height_msl&timezone=auto&forecast_days=3`;
+  const bomP = fetch("data/bom.json", {cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null);
   try {
-    const [w, m] = await Promise.all([fetch(wx).then(r=>r.json()), fetch(mar).then(r=>r.json()).catch(()=>null)]);
+    const [w, m, b] = await Promise.all([fetch(wx).then(r=>r.json()), fetch(mar).then(r=>r.json()).catch(()=>null), bomP]);
     if (w.error) throw new Error(w.reason);
-    render(w, m && !m.error ? m : null);
+    bom = b; bomLoaded = true; lastWx = w; lastMar = m && !m.error ? m : null;
+    redraw();
   } catch(e) {
     $("verdict").className = "verdict bad";
     $("verdict").innerHTML = `<div class="big">No data</div><p class="err">Couldn't load the forecast (${e.message}). Check your internet connection, then reload.</p>`;
   }
 }
 
+const WARN_RE = /(gale|storm force|hurricane force|strong wind) warning/i;
+function bomProduct(id){ return bom && bom.products ? bom.products[id] : null; }
+function bomWarning(){
+  // Warning in force for the chosen area, or (open water) in the coastal waters forecast
+  const p = bomProduct(area === "open" ? "IDT12326" : area);
+  if (!p || !p.text) return null;
+  const line = p.text.split("\n").find(l => WARN_RE.test(l) && !/^\s*no\b/i.test(l) && !/cancel/i.test(l));
+  return line ? line.trim() : null;
+}
+function renderBom(){
+  const id = area === "open" ? "IDT12326" : area;
+  const p = bomProduct(id);
+  const link = area === "open" ? "https://www.bom.gov.au/tas/forecasts/southeastcoast.shtml"
+    : {IDT12420:"https://www.bom.gov.au/tas/forecasts/derwent.shtml",IDT12430:"https://www.bom.gov.au/tas/forecasts/channel.shtml",IDT12450:"https://www.bom.gov.au/tas/forecasts/bays.shtml"}[id];
+  const a = `<p class="note"><a href="${link}" target="_blank" rel="noopener">Open on the BOM website</a></p>`;
+  if (!bomLoaded) return;
+  if (!bom) { $("bomBody").innerHTML = `<p class="note">BOM forecast isn't available yet. It appears once the hourly BOM update has run on GitHub.</p>${a}`; return; }
+  if (!p || !p.text) { $("bomBody").innerHTML = `<p class="note">The last BOM update couldn't get the ${AREA_NAMES[id]} forecast.</p>${a}`; return; }
+  let text = p.text;
+  text = text.replace(/\n{3,}/g, "\n\n").trim();
+  const warn = bomWarning();
+  const age = bom.updated ? Math.round((Date.now() - Date.parse(bom.updated)) / 60000) : null;
+  const ago = age == null ? "" : age < 90 ? `${age} min ago` : `${Math.round(age/60)} h ago`;
+  const span = document.createElement("pre"); span.className = "bomtext"; span.textContent = text;
+  $("bomBody").innerHTML = (warn ? `<div class="warnbox">⚠ ${warn.replace(/[<>&]/g,"")}</div>` : "") +
+    `<p class="note">${AREA_NAMES[id]}${ago ? " · collected " + ago : ""}</p>`;
+  $("bomBody").appendChild(span);
+  $("bomBody").insertAdjacentHTML("beforeend", a);
+}
+function redraw(){
+  LIM = area === "open" ? LIMITS.open : LIMITS.sheltered;
+  $("limitsNote").textContent = area === "open"
+    ? "Wind is the average of all four models, in knots. Gust is the highest any model predicts. Open-water limits for a 4.1 m tinny: under 8 kn and waves under 0.4 m is comfortable; over 13 kn, gusts over 18 kn or waves over 0.8 m means stay in."
+    : "Wind is the average of all four models, in knots. Gust is the highest any model predicts. Sheltered-water limits for a 4.1 m tinny: under 10 kn is comfortable; over 15 kn or gusts over 22 kn means stay in. The wave model is too coarse for sheltered water, so wave figures are shown but not used; check BOM's seas forecast. Wind against tide makes it choppier than the numbers suggest.";
+  renderBom();
+  if (lastWx) render(lastWx, lastMar);
+}
 function render(w, m){
   const H = w.hourly, T = H.time;
   const per = k => MODELS.map(([id]) => H[`${k}_${id}`] || []);
@@ -185,14 +252,16 @@ function render(w, m){
   const next = []; for (let i=start;i<Math.min(T.length,start+12);i++) next.push(row(i));
   const lit = next.filter(r=>r.day) .length ? next.filter(r=>r.day) : next;
   const lv = lit.map(r => worst([lvl(r.wind,LIM.wind),lvl(r.gust,LIM.gust),lvl(r.wave,LIM.wave),lvl(r.rain,LIM.rain)].filter(Boolean)));
-  const v = worst(lv);
+  const bw = bomWarning();
+  const v = bw ? "bad" : worst(lv);
   const mw = max(lit.map(r=>r.wind)), mg = max(lit.map(r=>r.gust)), mwv = max(lit.map(r=>r.wave));
   const goodHrs = lit.filter((r,k)=>lv[k]==="good").map(r=>r.t.slice(11,16));
   const words = {good:"Looks good", warn:"Take care", bad:"Stay in"};
-  const why = `Next 12 hours of daylight: wind up to ${f0(mw)} kn, gusts to ${f0(mg)} kn${mwv!=null?`, waves up to ${f1(mwv)} m`:""}.`;
+  const why = (bw ? `BOM warning in force: ${bw.replace(/[<>&]/g,"")}. ` : "") + `${area==="open"?"Open water":AREA_NAMES[area]}, next 12 hours of daylight:`;
+  const why2 = ` wind up to ${f0(mw)} kn, gusts to ${f0(mg)} kn${mwv!=null?`, waves up to ${f1(mwv)} m`:""}.`;
   const win = v!=="good" && goodHrs.length ? ` Calmer window around ${goodHrs[0]}–${goodHrs[goodHrs.length-1]}.` : "";
   $("verdict").className = "verdict " + v;
-  $("verdict").innerHTML = `<div class="big">${words[v]}</div><p>${why}${win}</p>`;
+  $("verdict").innerHTML = `<div class="big">${words[v]}</div><p>${why}${why2}${bw ? "" : win}</p>`;
 
   const n = row(start);
   const stat = (k,val,s,c) => `<div class="stat"><div class="k">${k}</div><div class="v ${c?"":""}">${val}</div><div class="s">${s}</div></div>`;
@@ -262,6 +331,8 @@ function setLoc(lat, lon, name){
   try { localStorage.setItem("bdw-loc", JSON.stringify(loc)); } catch(e){}
   load();
 }
+$("area").value = area;
+$("area").onchange = () => { area = $("area").value; try { localStorage.setItem("bdw-area", area); } catch(e){} redraw(); };
 $("go").onclick = search;
 $("q").addEventListener("keydown", e => { if (e.key==="Enter") search(); });
 $("loc").onclick = () => {
@@ -269,6 +340,7 @@ $("loc").onclick = () => {
   navigator.geolocation.getCurrentPosition(p => setLoc(+p.coords.latitude.toFixed(3), +p.coords.longitude.toFixed(3), "My location"),
     () => { $("results").innerHTML = '<p class="note err">Location access was refused. Search for a place instead.</p>'; });
 };
+redraw();
 load();
 </script>
 </body>
