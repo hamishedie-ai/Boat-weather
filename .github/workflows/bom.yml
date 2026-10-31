@@ -45,20 +45,43 @@ jobs:
               text = "\n".join(l.strip() for l in text.splitlines())
               return re.sub(r"\n{3,}", "\n\n", text).strip()
 
-          def xml_to_text(raw):
+          def parse_xml(raw):
               root = ET.fromstring(raw)
+              res = {"warnings": [], "synoptic": None, "days": [], "text": ""}
               lines = []
-              for el in root.iter():
-                  t = (el.text or "").strip()
-                  tag = el.get("type") or el.tag
-                  if el.tag == "area" and el.get("description"):
-                      lines.append("\n" + el.get("description").upper())
-                  elif el.tag == "forecast-period" and el.get("start-time-local"):
-                      lines.append("\n" + el.get("start-time-local")[:10])
-                  if t and el.tag in ("text", "p"):
-                      label = el.get("type", "").replace("_", " ").capitalize()
-                      lines.append((label + ": " if label else "") + t)
-              return "\n".join(lines).strip()
+              for area in root.iter("area"):
+                  for el in area.iter("text"):
+                      t = (el.text or "").strip(); typ = el.get("type", "")
+                      if not t: continue
+                      if "warning" in typ and "footer" not in typ:
+                          res["warnings"].append(t)
+                      elif typ == "synoptic_situation":
+                          res["synoptic"] = t
+                  for fp in area.findall("forecast-period"):
+                      d = {"date": (fp.get("start-time-local") or "")[:10]}
+                      for el in fp.iter("text"):
+                          typ = el.get("type", "").replace("forecast_", "")
+                          t = (el.text or "").strip()
+                          if t: d[typ] = t
+                      if len(d) > 1 and area.get("type") != "region":
+                          d["area"] = area.get("description")
+                          res["days"].append(d)
+              for d in res["days"]:
+                  lines.append(datetime.date.fromisoformat(d["date"]).strftime("%A %-d %B") if d["date"] else "")
+                  for k in ("winds", "seas", "swell1", "swell2", "weather"):
+                      if k in d: lines.append(f"{k.rstrip('12').capitalize()}: {d[k]}")
+                  lines.append("")
+              res["text"] = "\n".join(lines).strip()
+              return res
+
+          WARN_RE = re.compile(r"(gale|storm force|hurricane force|strong wind)[^.\n]*warning[^\n]*", re.I)
+          def page_warnings(pid):
+              try:
+                  text = from_page(pid)
+                  return sorted({m.group(0).strip() for m in WARN_RE.finditer(text) if not re.match(r"\s*no\b", m.group(0), re.I)})
+              except Exception as e:
+                  print(f"{pid} page: {e}")
+                  return []
 
           for pid, name in PRODUCTS.items():
               entry = {"name": name, "text": None, "error": None}
@@ -73,11 +96,15 @@ jobs:
                   buf = io.BytesIO()
                   ftp.retrbinary("RETR " + cands[0], buf.write)
                   raw = buf.getvalue()
-                  entry["text"] = xml_to_text(raw) if cands[0].endswith(".xml") else raw.decode("utf-8", "replace").replace("\r\n", "\n")
+                  if cands[0].endswith(".xml"):
+                      entry.update(parse_xml(raw))
+                  else:
+                      entry["text"] = raw.decode("utf-8", "replace").replace("\r\n", "\n")
                   entry["file"] = cands[0]
               except Exception as e:
                   entry["error"] = str(e)
                   print(f"{pid}: {e}")
+              entry["warnings"] = sorted(set(entry.get("warnings", []) + page_warnings(pid)))
               out["products"][pid] = entry
           ftp.quit()
           os.makedirs("data", exist_ok=True)
