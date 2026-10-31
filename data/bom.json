@@ -1,0 +1,25 @@
+{
+ "updated": "2026-10-31T07:12:08.296071+00:00",
+ "products": {
+  "IDT12420": {
+   "name": "Derwent Estuary",
+   "text": null,
+   "error": "<urlopen error <urlopen error ftp error: error_perm('550 Failed to change directory.')>>"
+  },
+  "IDT12430": {
+   "name": "D'Entrecasteaux Channel",
+   "text": null,
+   "error": "<urlopen error <urlopen error ftp error: error_perm('550 Failed to change directory.')>>"
+  },
+  "IDT12450": {
+   "name": "Frederick Henry & Norfolk Bays",
+   "text": null,
+   "error": "<urlopen error <urlopen error ftp error: error_perm('550 Failed to change directory.')>>"
+  },
+  "IDT12326": {
+   "name": "South East Coast",
+   "text": null,
+   "error": "<urlopen error <urlopen error ftp error: error_perm('550 Failed to change directory.')>>"
+  }
+ }
+}
