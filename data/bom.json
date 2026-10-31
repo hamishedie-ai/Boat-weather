@@ -1,21 +1,15 @@
 {
- "updated": "2026-10-31T07:19:36.981027+00:00",
+ "updated": "2026-10-31T07:20:15.809159+00:00",
  "products": {
   "IDT12420": {
    "name": "Derwent Estuary",
-   "text": "Saturday 31 October\n\nSaturday 31 October\nWinds: Northwesterly 15 to 20 knots turning westerly 15 to 25 knots in the late afternoon. Winds may reach up to 30 knots at times.\nSeas: Below 1 metre.\nWeather: Partly cloudy.\n\nSunday 1 November\nWinds: Westerly 10 to 15 knots becoming northwesterly below 10 knots in the late evening.\nSeas: Below 1 metre.\nWeather: Cloudy.\n\nMonday 2 November\nWinds: North to northwesterly about 10 knots tending southeasterly 10 to 15 knots in the early afternoon.\nSeas: Below 1 metre.\nWeather: Cloudy.\n\nTuesday 3 November\nWinds: Variable below 10 knots becoming southeasterly 10 to 15 knots during the day then becoming variable below 10 knots during the evening.\nSeas: Below 1 metre.\nWeather: Partly cloudy.\n\nWednesday 4 November\nWinds: North to northwesterly below 10 knots tending southerly 10 to 15 knots during the day then tending southwesterly during the afternoon.\nSeas: Below 1 metre.\nWeather: Partly cloudy. 80% chance of showers.",
+   "text": "Saturday 31 October\nWinds: Northwesterly 15 to 20 knots turning westerly 15 to 25 knots in the late afternoon. Winds may reach up to 30 knots at times.\nSeas: Below 1 metre.\nWeather: Partly cloudy.\n\nSunday 1 November\nWinds: Westerly 10 to 15 knots becoming northwesterly below 10 knots in the late evening.\nSeas: Below 1 metre.\nWeather: Cloudy.\n\nMonday 2 November\nWinds: North to northwesterly about 10 knots tending southeasterly 10 to 15 knots in the early afternoon.\nSeas: Below 1 metre.\nWeather: Cloudy.\n\nTuesday 3 November\nWinds: Variable below 10 knots becoming southeasterly 10 to 15 knots during the day then becoming variable below 10 knots during the evening.\nSeas: Below 1 metre.\nWeather: Partly cloudy.\n\nWednesday 4 November\nWinds: North to northwesterly below 10 knots tending southerly 10 to 15 knots during the day then tending southwesterly during the afternoon.\nSeas: Below 1 metre.\nWeather: Partly cloudy. 80% chance of showers.",
    "error": null,
    "warnings": [
     "Strong Wind Warning for Saturday for Derwent Estuary"
    ],
    "synoptic": "A cold front moving across Tasmania on Saturday afternoon will clear to the east on Sunday, followed by a weak ridge of high pressure later Sunday. A low pressure system is forecast to move across Victoria during Monday then over the Tasman Sea on Tuesday. A cold front is expected to move across Tasmania from the west on Wednesday.",
    "days": [
-    {
-     "date": "2026-10-31",
-     "preamble": "Wind and wave forecasts are averages. Wind gusts can be 40 per cent stronger than the forecast, and stronger still in squalls and thunderstorms. Maximum waves can be twice the forecast height.",
-     "synoptic_situation": "A cold front moving across Tasmania on Saturday afternoon will clear to the east on Sunday, followed by a weak ridge of high pressure later Sunday. A low pressure system is forecast to move across Victoria during Monday then over the Tasman Sea on Tuesday. A cold front is expected to move across Tasmania from the west on Wednesday.",
-     "area": "South East"
-    },
     {
      "date": "2026-10-31",
      "winds": "Northwesterly 15 to 20 knots turning westerly 15 to 25 knots in the late afternoon. Winds may reach up to 30 knots at times.",
@@ -56,19 +50,13 @@
   },
   "IDT12430": {
    "name": "D'Entrecasteaux Channel",
-   "text": "Saturday 31 October\n\nSaturday 31 October\nWinds: Northwesterly 15 to 25 knots tending westerly 20 to 30 knots in the late afternoon then decreasing to 15 to 20 knots in the evening.\nSeas: Around 1 metre.\nWeather: Cloudy. 60% chance of showers.\n\nSunday 1 November\nWinds: Westerly 10 to 15 knots turning north to northwesterly below 10 knots in the late evening.\nSeas: 1 to 1.5 metres, decreasing below 1 metre during the morning.\nWeather: Cloudy. 50% chance of showers.\n\nMonday 2 November\nWinds: North to northwesterly about 10 knots tending south to southeasterly 10 to 15 knots in the late afternoon then becoming variable below 10 knots in the late evening.\nSeas: Below 1 metre.\nWeather: Cloudy.\n\nTuesday 3 November\nWinds: Variable about 10 knots becoming south to southeasterly 10 to 15 knots during the day then shifting north to northwesterly below 10 knots during the evening.\nSeas: Below 1 metre.\nWeather: Partly cloudy.\n\nWednesday 4 November\nWinds: North to northwesterly below 10 knots tending southwesterly 15 to 20 knots during the day.\nSeas: Below 0.5 metres, increasing to around 1 metre during the afternoon.\nWeather: Cloudy. 80% chance of showers.",
+   "text": "Saturday 31 October\nWinds: Northwesterly 15 to 25 knots tending westerly 20 to 30 knots in the late afternoon then decreasing to 15 to 20 knots in the evening.\nSeas: Around 1 metre.\nWeather: Cloudy. 60% chance of showers.\n\nSunday 1 November\nWinds: Westerly 10 to 15 knots turning north to northwesterly below 10 knots in the late evening.\nSeas: 1 to 1.5 metres, decreasing below 1 metre during the morning.\nWeather: Cloudy. 50% chance of showers.\n\nMonday 2 November\nWinds: North to northwesterly about 10 knots tending south to southeasterly 10 to 15 knots in the late afternoon then becoming variable below 10 knots in the late evening.\nSeas: Below 1 metre.\nWeather: Cloudy.\n\nTuesday 3 November\nWinds: Variable about 10 knots becoming south to southeasterly 10 to 15 knots during the day then shifting north to northwesterly below 10 knots during the evening.\nSeas: Below 1 metre.\nWeather: Partly cloudy.\n\nWednesday 4 November\nWinds: North to northwesterly below 10 knots tending southwesterly 15 to 20 knots during the day.\nSeas: Below 0.5 metres, increasing to around 1 metre during the afternoon.\nWeather: Cloudy. 80% chance of showers.",
    "error": null,
    "warnings": [
     "Strong Wind Warning for Saturday for Channel"
    ],
    "synoptic": "A cold front moving across Tasmania on Saturday afternoon will clear to the east on Sunday, followed by a weak ridge of high pressure later Sunday. A low pressure system is forecast to move across Victoria during Monday then over the Tasman Sea on Tuesday. A cold front is expected to move across Tasmania from the west on Wednesday.",
    "days": [
-    {
-     "date": "2026-10-31",
-     "preamble": "Wind and wave forecasts are averages. Wind gusts can be 40 per cent stronger than the forecast, and stronger still in squalls and thunderstorms. Maximum waves can be twice the forecast height.",
-     "synoptic_situation": "A cold front moving across Tasmania on Saturday afternoon will clear to the east on Sunday, followed by a weak ridge of high pressure later Sunday. A low pressure system is forecast to move across Victoria during Monday then over the Tasman Sea on Tuesday. A cold front is expected to move across Tasmania from the west on Wednesday.",
-     "area": "South East"
-    },
     {
      "date": "2026-10-31",
      "winds": "Northwesterly 15 to 25 knots tending westerly 20 to 30 knots in the late afternoon then decreasing to 15 to 20 knots in the evening.",
@@ -109,19 +97,13 @@
   },
   "IDT12450": {
    "name": "Frederick Henry & Norfolk Bays",
-   "text": "Saturday 31 October\n\nSaturday 31 October\nWinds: Northwesterly 20 to 30 knots turning westerly 15 to 25 knots in the evening.\nSeas: Around 1 metre.\nWeather: Partly cloudy. 60% chance of showers.\n\nSunday 1 November\nWinds: Westerly 10 to 15 knots tending southwesterly in the morning then turning west to northwesterly in the late morning and afternoon.\nSeas: Around 1 metre.\nWeather: Cloudy.\n\nMonday 2 November\nWinds: Northwesterly below 10 knots becoming south to southeasterly in the early afternoon then tending easterly 10 to 15 knots in the late afternoon.\nSeas: Below 1 metre.\nWeather: Partly cloudy.\n\nTuesday 3 November\nWinds: Variable about 10 knots becoming south to southeasterly 10 to 15 knots during the day then becoming variable below 10 knots during the evening.\nSeas: Around 1 metre.\nWeather: Partly cloudy.\n\nWednesday 4 November\nWinds: North to northwesterly below 10 knots tending southwesterly 15 to 20 knots during the day.\nSeas: Below 0.5 metres, increasing to around 1 metre during the afternoon.\nWeather: Partly cloudy. 80% chance of showers.",
+   "text": "Saturday 31 October\nWinds: Northwesterly 20 to 30 knots turning westerly 15 to 25 knots in the evening.\nSeas: Around 1 metre.\nWeather: Partly cloudy. 60% chance of showers.\n\nSunday 1 November\nWinds: Westerly 10 to 15 knots tending southwesterly in the morning then turning west to northwesterly in the late morning and afternoon.\nSeas: Around 1 metre.\nWeather: Cloudy.\n\nMonday 2 November\nWinds: Northwesterly below 10 knots becoming south to southeasterly in the early afternoon then tending easterly 10 to 15 knots in the late afternoon.\nSeas: Below 1 metre.\nWeather: Partly cloudy.\n\nTuesday 3 November\nWinds: Variable about 10 knots becoming south to southeasterly 10 to 15 knots during the day then becoming variable below 10 knots during the evening.\nSeas: Around 1 metre.\nWeather: Partly cloudy.\n\nWednesday 4 November\nWinds: North to northwesterly below 10 knots tending southwesterly 15 to 20 knots during the day.\nSeas: Below 0.5 metres, increasing to around 1 metre during the afternoon.\nWeather: Partly cloudy. 80% chance of showers.",
    "error": null,
    "warnings": [
     "Strong Wind Warning for Saturday for Frederick Henry Bay and Norfolk Bay"
    ],
    "synoptic": "A cold front moving across Tasmania on Saturday afternoon will clear to the east on Sunday, followed by a weak ridge of high pressure later Sunday. A low pressure system is forecast to move across Victoria during Monday then over the Tasman Sea on Tuesday. A cold front is expected to move across Tasmania from the west on Wednesday.",
    "days": [
-    {
-     "date": "2026-10-31",
-     "preamble": "Wind and wave forecasts are averages. Wind gusts can be 40 per cent stronger than the forecast, and stronger still in squalls and thunderstorms. Maximum waves can be twice the forecast height.",
-     "synoptic_situation": "A cold front moving across Tasmania on Saturday afternoon will clear to the east on Sunday, followed by a weak ridge of high pressure later Sunday. A low pressure system is forecast to move across Victoria during Monday then over the Tasman Sea on Tuesday. A cold front is expected to move across Tasmania from the west on Wednesday.",
-     "area": "South East"
-    },
     {
      "date": "2026-10-31",
      "winds": "Northwesterly 20 to 30 knots turning westerly 15 to 25 knots in the evening.",
