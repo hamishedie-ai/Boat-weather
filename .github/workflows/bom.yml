@@ -63,7 +63,7 @@ jobs:
                           typ = el.get("type", "").replace("forecast_", "")
                           t = (el.text or "").strip()
                           if t: d[typ] = t
-                      if len(d) > 1 and area.get("type") != "region":
+                      if "winds" in d:
                           d["area"] = area.get("description")
                           res["days"].append(d)
               for d in res["days"]:

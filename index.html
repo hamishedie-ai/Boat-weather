@@ -348,7 +348,7 @@ function bomWarning(date){
   const hit = list.find(l => /(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i.test(l) ? new RegExp(wd,"i").test(l) : today);
   return hit ? hit.trim() : null;
 }
-function bomDay(date){ const p = bomProd(); return p && p.days ? p.days.find(d => d.date === date) : null; }
+function bomDay(date){ const p = bomProd(); return p && p.days ? p.days.find(d => d.date === date && d.winds) : null; }
 function rate(r){
   const L = LIM();
   const parts = [lvl(r.wind,L.wind), lvl(r.gust,L.gust), lvl(r.wave,L.wave)].filter(Boolean);
@@ -462,7 +462,7 @@ function renderBom(){
   (p.warnings || []).forEach(w => h += `<div class="warnbox">⚠ ${esc(w)}</div>`);
   if (p.days && p.days.length) {
     const sel = dayList[dayIdx] ? dayList[dayIdx][0].date : "";
-    h += p.days.map(d => {
+    h += p.days.filter(d => d.winds).map(d => {
       const name = new Date(d.date+"T12:00").toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"short"});
       const f = [["Winds",d.winds],["Seas",d.seas],["Swell",d.swell1],["Weather",d.weather]].filter(x=>x[1]);
       return `<div class="bday${d.date===sel?" sel":""}"><b>${name}</b>${f.map(([k,v])=>`<div><span>${k}</span> ${esc(v)}</div>`).join("")}</div>`;
