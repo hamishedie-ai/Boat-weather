@@ -152,6 +152,7 @@ nav a.on{color:var(--accent)}
       <div class="now"><span id="curIcon"></span><div class="temp" id="curTemp">–</div><div class="hl"><span id="feels"></span><span class="h" id="hi"></span><span class="l" id="lo"></span></div></div>
       <p class="summary" id="sumText">Loading forecasts…</p>
       <div class="tiles" id="tiles"></div>
+      <p class="note" id="obsNote"></p>
     </div>
   </details>
 
@@ -307,6 +308,8 @@ function build(){
   const H = W.hourly, T = H.time;
   const per = k => MODELS.map(([id]) => H[`${k}_${id}`] || []);
   const pick = (k, i) => { for (const [id] of MODELS) { const a = H[`${k}_${id}`]; if (a && a[i] != null) return a[i]; } return null; };
+  // Middle value across the models, so one model having a bad hour can't skew the reading
+  const med = (k, i) => { const v = okv(MODELS.map(([id]) => (H[`${k}_${id}`] || [])[i])).sort((a,b)=>a-b); if (!v.length) return null; const m = v.length >> 1; return v.length % 2 ? v[m] : (v[m-1] + v[m]) / 2; };
   const ws = per("wind_speed_10m"), wg = per("wind_gusts_10m"), wd = per("wind_direction_10m"), pr = per("precipitation"), tp = per("temperature_2m"), pp = per("precipitation_probability");
   const mt = M ? M.hourly : null;
   const mIdx = {}; if (mt) mt.time.forEach((t,i)=>mIdx[t]=i);
@@ -318,8 +321,8 @@ function build(){
       spread: wsv.length > 1 ? Math.max(...wsv) - Math.min(...wsv) : null,
       perModel: MODELS.map((_,k)=>({w:ws[k][i], g:wg[k][i], r:pr[k][i]})),
       rain:mean(pr.map(a=>a[i])), pop:max(pp.map(a=>a[i])), temp:mean(tp.map(a=>a[i])),
-      feels:pick("apparent_temperature",i), rh:pick("relative_humidity_2m",i), dew:pick("dew_point_2m",i),
-      pres:pick("pressure_msl",i), uv:pick("uv_index",i), code:pick("weather_code",i), cloud:pick("cloud_cover",i), day:pick("is_day",i),
+      feels:med("apparent_temperature",i), rh:med("relative_humidity_2m",i), dew:med("dew_point_2m",i),
+      pres:med("pressure_msl",i), uv:med("uv_index",i), code:pick("weather_code",i), cloud:med("cloud_cover",i), day:pick("is_day",i),
       wave:g("wave_height"), wwave:g("wind_wave_height"), swell:g("swell_wave_height"), sper:g("swell_wave_period"), sdir:g("swell_wave_direction"),
       sst:g("sea_surface_temperature"), sea:g("sea_level_height_msl") };
   });
@@ -330,6 +333,18 @@ function build(){
   W._now = nowRow;
   if (dayIdx >= dayList.length) dayIdx = 0;
 }
+
+/* ---------- BOM station observations ---------- */
+function nearestObs(){
+  const list = bom && bom.observations; if (!list) return null;
+  const R = Math.PI/180; let best = null, bd = 1e9;
+  list.forEach(o => { if (o.air_temperature == null) return;
+    const age = (Date.now() - Date.parse(o.time)) / 3.6e6; if (!(age < 3)) return;
+    const d = 6371 * Math.acos(Math.min(1, Math.sin(loc.lat*R)*Math.sin(o.lat*R) + Math.cos(loc.lat*R)*Math.cos(o.lat*R)*Math.cos((loc.lon-o.lon)*R)));
+    if (d < bd) { bd = d; best = o; } });
+  return best && bd <= 30 ? { ...best, km: bd } : null;
+}
+const num = v => v == null || v === "" || v === "-" ? null : +v;
 
 /* ---------- ratings ---------- */
 function effWave(r){ return isOpen() ? r.wave : chop(r.wind); }
@@ -371,7 +386,11 @@ function draw(){
 
   const day = dayList[dayIdx];
   const isToday = dayIdx === 0;
-  const now = isToday ? W._now : (day.find(r=>r.h===12) || day[0]);
+  let now = isToday ? W._now : (day.find(r=>r.h===12) || day[0]);
+  const ob = isToday ? nearestObs() : null;
+  if (ob) now = { ...now, temp: num(ob.air_temperature) ?? now.temp, feels: num(ob.apparent_temp) ?? now.feels, rh: num(ob["rel-humidity"]) ?? now.rh,
+    dew: num(ob.dew_point) ?? now.dew, pres: num(ob.msl_pres) ?? num(ob.pres) ?? now.pres, wind: num(ob.wind_spd) ?? now.wind,
+    gust: num(ob.wind_gust_spd) ?? now.gust, dir: num(ob.wind_dir_deg) ?? now.dir };
   if (hourSel == null || !day.find(r=>r.i===hourSel)) hourSel = isToday ? W._now.i : (day.find(r=>r.h===9) || day[0]).i;
 
   // Current conditions
@@ -379,7 +398,7 @@ function draw(){
   $("curIcon").innerHTML = icon(now.code, isToday ? now.day : 1);
   $("curTemp").textContent = f0(now.temp) + "°";
   $("feels").textContent = now.feels != null ? `Feels like ${f0(now.feels)}°` : "";
-  $("hi").textContent = `High ${f0(max(day.map(r=>r.temp)))}°`;
+  $("hi").textContent = `High ${f0(max([...day.map(r=>r.temp), ob ? now.temp : null, ob ? num(ob.maximum_air_temperature) : null]))}°`;
   $("lo").textContent = `Low ${f0(min(day.map(r=>r.temp)))}°`;
   const light = day.filter(r=>r.h>=7&&r.h<=19);
   const wl = min(light.map(r=>r.wind)), wh = max(light.map(r=>r.wind));
@@ -397,12 +416,13 @@ function draw(){
     [now.rh != null ? `${f0(now.rh)}%` : "–", "Humidity"],
     [now.pres != null ? `${f0(now.pres)} hPa` : "–", "Pressure"],
     [uvMax!=null?`${f0(uvMax)} ${uvWord}`:"–", "UV rating"],
-    [`${f1(rainTot)} mm`, isToday ? "Rain today" : "Rain"],
+    [`${f1(ob && num(ob.rainfall) != null ? num(ob.rainfall) : rainTot)} mm`, ob ? "Rain since 9am" : isToday ? "Rain today" : "Rain"],
     [now.dew != null ? `${f0(now.dew)}°` : "–", "Dew point"],
     [now.sst != null ? `${f0(now.sst)}°` : "–", "Water temp"],
     [now.swell != null ? `${f1(now.swell)} m ${f0(now.sper)}s` : "–", "Swell"]
   ];
   $("tiles").innerHTML = tiles.map(([b,s])=>`<div class="tile"><b>${esc(b)}</b><span>${s}</span></div>`).join("");
+  $("obsNote").textContent = ob ? `Measured at BOM ${ob.name} station${ob.km > 2 ? ` (${Math.round(ob.km)} km away)` : ""}, ${new Date(ob.time).toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit",timeZone:W.timezone}).replace(" ","")}. Water temp and swell are forecast.` : isToday ? "From the forecast models. No BOM weather station within 30 km." : "Forecast for midday.";
 
   // Boating
   $("boatTitle").textContent = isOpen() ? "Open water boating forecast" : "Enclosed waters boating forecast";
