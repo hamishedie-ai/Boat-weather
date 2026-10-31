@@ -106,6 +106,21 @@ jobs:
                   print(f"{pid}: {e}")
               entry["warnings"] = sorted(set(entry.get("warnings", []) + page_warnings(pid)))
               out["products"][pid] = entry
+          # Latest weather station observations for Tasmania
+          try:
+              buf = io.BytesIO(); ftp.retrbinary("RETR IDT60920.xml", buf.write)
+              root = ET.fromstring(buf.getvalue()); obs = []
+              for st in root.iter("station"):
+                  per = st.find("period")
+                  if per is None: continue
+                  o = {"name": st.get("description"), "lat": float(st.get("lat")), "lon": float(st.get("lon")), "time": per.get("time-local")}
+                  for el in per.iter("element"):
+                      o[el.get("type")] = el.text
+                  obs.append(o)
+              out["observations"] = obs
+              print(f"Got {len(obs)} weather stations")
+          except Exception as e:
+              print(f"observations: {e}")
           ftp.quit()
           os.makedirs("data", exist_ok=True)
           with open("data/bom.json", "w") as f:
