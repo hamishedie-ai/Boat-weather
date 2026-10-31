@@ -17,7 +17,7 @@ jobs:
       - name: Download BOM marine forecasts
         run: |
           python3 - <<'EOF'
-          import json, os, ftplib, io, datetime, re
+          import json, os, ftplib, io, datetime, re, html, urllib.request
           import xml.etree.ElementTree as ET
           PRODUCTS = {
               "IDT12420": "Derwent Estuary",
@@ -30,7 +30,20 @@ jobs:
           ftp.login()
           ftp.cwd("/anon/gen/fwo")
           names = ftp.nlst()
-          print("Matching files:", [n for n in names if n.startswith(("IDT124", "IDT123"))])
+          out["feed_files"] = sorted(n for n in names if n.startswith("IDT1"))
+          PAGES = {"IDT12420": "derwent", "IDT12430": "channel", "IDT12450": "bays", "IDT12326": "southeastcoast"}
+
+          def from_page(pid):
+              req = urllib.request.Request(f"https://www.bom.gov.au/tas/forecasts/{PAGES[pid]}.shtml",
+                  headers={"User-Agent": "Mozilla/5.0 (personal boating forecast app)"})
+              page = urllib.request.urlopen(req, timeout=60).read().decode("utf-8", "replace")
+              m = re.search(r'<div[^>]*id="content"[^>]*>(.*?)(?:Product IDT|<div[^>]*id="footer")', page, re.S)
+              body = m.group(1) if m else page
+              body = re.sub(r"<(script|style)[^>]*>.*?</\1>", "", body, flags=re.S)
+              body = re.sub(r"<(br|/p|/h\d|/div|/li|/dd|/dt)[^>]*>", "\n", body)
+              text = html.unescape(re.sub(r"<[^>]+>", "", body))
+              text = "\n".join(l.strip() for l in text.splitlines())
+              return re.sub(r"\n{3,}", "\n\n", text).strip()
 
           def xml_to_text(raw):
               root = ET.fromstring(raw)
@@ -49,11 +62,14 @@ jobs:
 
           for pid, name in PRODUCTS.items():
               entry = {"name": name, "text": None, "error": None}
-              cands = [n for n in names if n.startswith(pid + ".")]
+              cands = [n for n in names if n.startswith(pid + ".") and "amoc" not in n]
               cands.sort(key=lambda n: (not n.endswith(".txt"), not n.endswith(".xml"), n))
               try:
                   if not cands:
-                      raise RuntimeError("no file on BOM feed")
+                      entry["text"] = from_page(pid)
+                      entry["file"] = "web page"
+                      out["products"][pid] = entry
+                      continue
                   buf = io.BytesIO()
                   ftp.retrbinary("RETR " + cands[0], buf.write)
                   raw = buf.getvalue()
