@@ -17,7 +17,8 @@ jobs:
       - name: Download BOM marine forecasts
         run: |
           python3 - <<'EOF'
-          import json, os, urllib.request, datetime
+          import json, os, ftplib, io, datetime, re
+          import xml.etree.ElementTree as ET
           PRODUCTS = {
               "IDT12420": "Derwent Estuary",
               "IDT12430": "D'Entrecasteaux Channel",
@@ -25,16 +26,44 @@ jobs:
               "IDT12326": "South East Coast",
           }
           out = {"updated": datetime.datetime.now(datetime.timezone.utc).isoformat(), "products": {}}
+          ftp = ftplib.FTP("ftp.bom.gov.au", timeout=60)
+          ftp.login()
+          ftp.cwd("/anon/gen/fwo")
+          names = ftp.nlst()
+          print("Matching files:", [n for n in names if n.startswith(("IDT124", "IDT123"))])
+
+          def xml_to_text(raw):
+              root = ET.fromstring(raw)
+              lines = []
+              for el in root.iter():
+                  t = (el.text or "").strip()
+                  tag = el.get("type") or el.tag
+                  if el.tag == "area" and el.get("description"):
+                      lines.append("\n" + el.get("description").upper())
+                  elif el.tag == "forecast-period" and el.get("start-time-local"):
+                      lines.append("\n" + el.get("start-time-local")[:10])
+                  if t and el.tag in ("text", "p"):
+                      label = el.get("type", "").replace("_", " ").capitalize()
+                      lines.append((label + ": " if label else "") + t)
+              return "\n".join(lines).strip()
+
           for pid, name in PRODUCTS.items():
               entry = {"name": name, "text": None, "error": None}
+              cands = [n for n in names if n.startswith(pid + ".")]
+              cands.sort(key=lambda n: (not n.endswith(".txt"), not n.endswith(".xml"), n))
               try:
-                  url = f"ftp://ftp.bom.gov.au/anon/gen/fwo/{pid}.txt"
-                  with urllib.request.urlopen(url, timeout=60) as r:
-                      entry["text"] = r.read().decode("utf-8", "replace").replace("\r\n", "\n")
+                  if not cands:
+                      raise RuntimeError("no file on BOM feed")
+                  buf = io.BytesIO()
+                  ftp.retrbinary("RETR " + cands[0], buf.write)
+                  raw = buf.getvalue()
+                  entry["text"] = xml_to_text(raw) if cands[0].endswith(".xml") else raw.decode("utf-8", "replace").replace("\r\n", "\n")
+                  entry["file"] = cands[0]
               except Exception as e:
                   entry["error"] = str(e)
                   print(f"{pid}: {e}")
               out["products"][pid] = entry
+          ftp.quit()
           os.makedirs("data", exist_ok=True)
           with open("data/bom.json", "w") as f:
               json.dump(out, f, indent=1)
