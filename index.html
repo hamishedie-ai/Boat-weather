@@ -90,7 +90,7 @@ main{display:flex;flex-direction:column;gap:12px;padding-block:12px}
 #hourTable tr.sel td{background:#fff1ec}
 
 /* Map */
-.mapwrap{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+.mapwrap{position:relative;isolation:isolate;z-index:0;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
 #map{height:min(62vh,420px);background:#dfe7ec}
 .mlegend{position:absolute;left:8px;bottom:8px;z-index:800;background:rgba(255,255,255,.92);border-radius:8px;padding:5px 8px;font-size:.7rem;font-weight:700;pointer-events:none}
 .mlegend .bar{width:150px;height:7px;border-radius:4px;background:linear-gradient(90deg,#508ce6,#3cbec8 18%,#5ac85a 30%,#f0c832 44%,#f07828 59%,#dc3232 74%,#a03cbe)}
@@ -758,8 +758,8 @@ function windColor(kn){
 function initMap(){
   if (map || !window.L || !$("mapcard").open) return;
   map = L.map("map", { zoomSnap: 0.5 }).setView([loc.lat, loc.lon], 10);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { subdomains:"abcd", maxZoom:19,
-    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>' }).addTo(map);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19,
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(map);
   seaLayer = L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom:18, attribution:'&copy; <a href="https://www.openseamap.org">OpenSeaMap</a>' });
   if (show.sea) seaLayer.addTo(map);
   const pane = map.createPane("wind"); pane.style.zIndex = 450; pane.style.pointerEvents = "none";
@@ -823,7 +823,7 @@ function buildField(){
   for (let y = 0; y < rws; y++) for (let x = 0; x < cols; x++) {
     const ll = map.containerPointToLatLng([x*S, y*S]), [uu, vv] = gridUV(ll.lat, ll.lng, ti), k = y*cols + x;
     u[k] = uu; v[k] = vv; const c = windColor(Math.hypot(uu, vv));
-    img.data.set([c[0], c[1], c[2], 120], k*4);
+    img.data.set([c[0], c[1], c[2], 95], k*4);
   }
   sc.putImageData(img, 0, 0);
   heatCx.imageSmoothingEnabled = true; heatCx.clearRect(0, 0, size.x, size.y);
