@@ -889,9 +889,11 @@ async function dropPin(ll){
     const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${ll.lat.toFixed(4)}&lon=${ll.lng.toFixed(4)}&zoom=14&accept-language=en`).then(r => r.json());
     if (pinAt !== ll) return;
     const a = r.address || {};
-    const name = a.suburb || a.locality || a.village || a.town || a.hamlet || a.city || r.name || a.county;
-    if (name) { pinPlace = { name: (r.category === "natural" || r.category === "water") && r.name ? r.name : name, sub: [a.state, "Australia"].filter(Boolean).join(", ") };
-      $("pinName").textContent = `Near ${pinPlace.name}`; }
+    const water = (r.category === "natural" || r.category === "water" || a.bay || a.water) && r.name && r.name !== a.state ? r.name : null;
+    const name = water || a.suburb || a.locality || a.village || a.town || a.hamlet || a.city;
+    pinPlace = name ? { name, sub: [a.state, "Australia"].filter(Boolean).join(", ") }
+                    : { name: "Open water", sub: `${ll.lat.toFixed(2)}, ${ll.lng.toFixed(2)}` };
+    $("pinName").textContent = name ? (water ? name : `Near ${name}`) : "Open water";
   } catch(e) {}
 }
 function pinInfo(){
